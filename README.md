@@ -1,6 +1,23 @@
-# Trip Planner
+# Travel Planner
 
-A beginner-friendly React + Vite starter app for planning places to visit.
+Travel Planner is a React + Vite web app for planning trips with friends. Users can add places they want to visit, organize them by priority, view places on a map, and use the app in English or Traditional Mandarin.
+
+The goal is to make travel planning easier by combining a shared place list, Google Maps place details, ratings, notes, and a simple route order in one app.
+
+## Project Idea
+
+When planning a trip, people usually save places in different apps and use maps separately to search how to get to each spot. This project brings those planning pieces into one place.
+
+Users will be able to:
+
+- Add travel spots.
+- View all spots on a list and map.
+- Prioritize where they want to go.
+- Categorize each spot.
+- See Google place ratings and addresses.
+- Switch between English and Traditional Mandarin.
+
+This project starts without a login system. The first version focuses on the core planning structure and user interface.
 
 ## What It Can Do
 
@@ -66,4 +83,5 @@ src/
 - Save spots to local storage.
 - Add drag-and-drop route ordering.
 - Add trip days and budgets.
+- Check transportation time between spots.
 - Convert the project to TypeScript later.
