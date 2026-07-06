@@ -6,6 +6,7 @@ const blankSpot = {
   category: "Food",
   visitTime: 60,
   priority: "Medium",
+  personalRating: "",
   notes: ""
 };
 
@@ -13,23 +14,23 @@ const categories = ["Food", "Landmark", "Nature", "Shopping", "Museum", "Other"]
 const priorities = ["High", "Medium", "Low"];
 
 function categoryFromPlaceTypes(types = []) {
-  if (types.some((type) => ["restaurant", "cafe", "bakery", "meal_takeaway"].includes(type))) {
+  if (types.some((type) => ["restaurant", "cafe", "bakery", "meal_takeaway", "food"].includes(type))) {
     return "Food";
   }
 
-  if (types.some((type) => ["museum", "art_gallery"].includes(type))) {
+  if (types.some((type) => ["museum", "art_gallery", "tourism"].includes(type))) {
     return "Museum";
   }
 
-  if (types.some((type) => ["park", "natural_feature"].includes(type))) {
+  if (types.some((type) => ["park", "natural_feature", "leisure"].includes(type))) {
     return "Nature";
   }
 
-  if (types.some((type) => ["shopping_mall", "store"].includes(type))) {
+  if (types.some((type) => ["shopping_mall", "store", "shop"].includes(type))) {
     return "Shopping";
   }
 
-  if (types.some((type) => ["tourist_attraction", "point_of_interest"].includes(type))) {
+  if (types.some((type) => ["tourist_attraction", "point_of_interest", "historic"].includes(type))) {
     return "Landmark";
   }
 
@@ -75,8 +76,9 @@ export default function SpotForm({ onAddSpot, selectedPlace, setSelectedPlace, t
       name: spot.name.trim(),
       area: spot.area.trim() || t.unknownArea,
       address: selectedPlace?.address || "",
-      rating: selectedPlace?.rating || null,
-      placeId: selectedPlace?.placeId || "",
+      personalRating: spot.personalRating ? Number(spot.personalRating) : null,
+      osmId: selectedPlace?.osmId || "",
+      osmType: selectedPlace?.osmType || "",
       lat: selectedPlace?.lat || null,
       lng: selectedPlace?.lng || null,
       mapUrl: selectedPlace?.mapUrl || "",
@@ -161,6 +163,18 @@ export default function SpotForm({ onAddSpot, selectedPlace, setSelectedPlace, t
           </select>
         </label>
       </div>
+
+      <label>
+        {t.personalRating}
+        <input
+          max="5"
+          min="1"
+          type="number"
+          value={spot.personalRating}
+          onChange={(event) => updateField("personalRating", event.target.value)}
+          placeholder={t.personalRatingPlaceholder}
+        />
+      </label>
 
       <label>
         {t.notes}

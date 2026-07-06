@@ -42,9 +42,9 @@ export default function SpotList({ spots, onDeleteSpot, t }) {
                 <span>
                   {spot.visitTime} {t.minutes}
                 </span>
-                {spot.rating && (
+                {spot.personalRating && (
                   <span>
-                    {t.rating}: {spot.rating} / 5
+                    {t.personalRating}: {spot.personalRating} / 5
                   </span>
                 )}
                 {spot.address && <span>{spot.address}</span>}

@@ -62,7 +62,7 @@ export default function PlanSummary({ spots, t }) {
               <small>
                 {t.priorities[spot.priority] || spot.priority} · {spot.visitTime}{" "}
                 {t.minutes}
-                {spot.rating ? ` · ${t.rating} ${spot.rating}` : ""}
+                {spot.personalRating ? ` · ${t.personalRating} ${spot.personalRating}` : ""}
               </small>
             </li>
           ))}

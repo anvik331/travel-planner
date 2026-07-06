@@ -12,7 +12,6 @@ export default function App() {
   const [language, setLanguage] = useState("en");
   const [selectedPlace, setSelectedPlace] = useState(null);
   const t = translations[language];
-  const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
   const filteredSpots = useMemo(() => {
     const search = searchText.trim().toLowerCase();
@@ -85,7 +84,6 @@ export default function App() {
       <section className="workspace-grid">
         <div className="form-stack">
           <MapPicker
-            apiKey={googleMapsApiKey}
             language={language}
             onSelectPlace={setSelectedPlace}
             selectedPlace={selectedPlace}

@@ -235,6 +235,44 @@ textarea:focus {
   gap: 16px;
 }
 
+.map-search {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.search-results {
+  display: grid;
+  gap: 8px;
+}
+
+.search-results button {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  border: 1px solid #ded8c8;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #ffffff;
+  color: #172033;
+  text-align: left;
+}
+
+.search-results button:hover {
+  border-color: #2f7d79;
+  background: #f2f8f6;
+}
+
+.search-results span {
+  font-weight: 900;
+}
+
+.search-results small {
+  color: #697383;
+  line-height: 1.35;
+}
+
 .map-frame {
   position: relative;
   overflow: hidden;
@@ -246,6 +284,16 @@ textarea:focus {
     linear-gradient(rgba(47, 125, 121, 0.08) 1px, transparent 1px),
     #eef2ed;
   background-size: 28px 28px;
+}
+
+.selected-map-marker span {
+  display: block;
+  width: 26px;
+  height: 26px;
+  border: 3px solid #ffffff;
+  border-radius: 999px;
+  background: #e05a47;
+  box-shadow: 0 8px 18px rgba(38, 30, 24, 0.28);
 }
 
 .map-canvas {
@@ -479,6 +527,7 @@ textarea:focus {
 
   .header-actions,
   .form-grid,
+  .map-search,
   .spot-cards,
   .stats-grid {
     grid-template-columns: 1fr;

@@ -2,7 +2,7 @@
 
 Travel Planner is a React + Vite web app for planning trips with friends. Users can add places they want to visit, organize them by priority, view places on a map, and use the app in English or Traditional Mandarin.
 
-The goal is to make travel planning easier by combining a shared place list, Google Maps place details, ratings, notes, and a simple route order in one app.
+The goal is to make travel planning easier by combining a shared place list, free map search, personal ratings, notes, and a simple route order in one app.
 
 ## Project Idea
 
@@ -14,15 +14,17 @@ Users will be able to:
 - View all spots on a list and map.
 - Prioritize where they want to go.
 - Categorize each spot.
-- See Google place ratings and addresses.
+- See selected map addresses and add personal ratings.
 - Switch between English and Traditional Mandarin.
 
 This project starts without a login system. The first version focuses on the core planning structure and user interface.
 
 ## What It Can Do
 
-- Pick spots from Google Maps using the Places API.
-- Save Google place rating, address, and map location with each spot.
+- Pick spots from a free OpenStreetMap map.
+- Search places with OpenStreetMap Nominatim.
+- Save address and map location with each spot.
+- Add your own personal rating for each place.
 - Add trip spots with area, category, visit time, priority, and notes.
 - Show all saved spots in a clean list.
 - Delete spots you no longer need.
@@ -30,25 +32,11 @@ This project starts without a login system. The first version focuses on the cor
 - Show quick stats for your current plan.
 - Switch between English and Traditional Mandarin.
 
-## Google Maps Setup
+## Map Setup
 
-Create a `.env` file in the project root:
+The map uses Leaflet with OpenStreetMap tiles, so no Google account, billing, or API key is required.
 
-```bash
-VITE_GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
-```
-
-In Google Cloud, enable these APIs for the key:
-
-- Maps JavaScript API
-- Places API
-- Geocoding API
-
-Restart the dev server after adding the key:
-
-```bash
-npm run dev
-```
+Place search uses the public OpenStreetMap Nominatim service. Keep searches user-triggered and moderate, and show OpenStreetMap attribution.
 
 ## Run The Project
 
@@ -73,8 +61,6 @@ src/
     MapPicker.jsx
   data/
     sampleSpots.js
-  utils/
-    googleMaps.js
   i18n.js
 ```
 

@@ -1,212 +1,175 @@
 import { useEffect, useRef, useState } from "react";
-import { loadGoogleMaps } from "../utils/googleMaps.js";
+import L from "leaflet";
 
-const taipeiCenter = { lat: 25.033, lng: 121.5654 };
+const taipeiCenter = [25.033, 121.5654];
+const nominatimBaseUrl = "https://nominatim.openstreetmap.org";
 
-function placeToSpotData(place, google) {
-  const location = place.geometry?.location;
-  const address = place.formatted_address || place.vicinity || "";
+function placeFromNominatim(result) {
+  const lat = Number(result.lat);
+  const lng = Number(result.lon);
+  const address = result.address || {};
   const area =
-    place.address_components?.find((part) =>
-      part.types.some((type) => ["sublocality", "administrative_area_level_3"].includes(type))
-    )?.long_name ||
-    place.address_components?.find((part) =>
-      part.types.includes("administrative_area_level_2")
-    )?.long_name ||
+    address.suburb ||
+    address.city_district ||
+    address.town ||
+    address.city ||
+    address.county ||
     "";
 
   return {
-    name: place.name || address || "Selected place",
+    name: result.name || result.display_name?.split(",")[0] || "Selected place",
     area,
-    address,
-    rating: place.rating || null,
-    placeId: place.place_id || "",
-    lat: location ? location.lat() : null,
-    lng: location ? location.lng() : null,
-    mapUrl:
-      place.url ||
-      (location
-        ? `https://www.google.com/maps/search/?api=1&query=${location.lat()},${location.lng()}`
-        : ""),
-    types: place.types || [],
-    google
+    address: result.display_name || "",
+    lat,
+    lng,
+    mapUrl: `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`,
+    osmId: result.osm_id,
+    osmType: result.osm_type,
+    types: [result.category, result.type].filter(Boolean)
   };
 }
 
-export default function MapPicker({ apiKey, spots, selectedPlace, onSelectPlace, t, language }) {
+function selectedIcon() {
+  return L.divIcon({
+    className: "selected-map-marker",
+    html: "<span></span>",
+    iconSize: [26, 26],
+    iconAnchor: [13, 13]
+  });
+}
+
+export default function MapPicker({ spots, selectedPlace, onSelectPlace, t, language }) {
   const mapNodeRef = useRef(null);
-  const searchNodeRef = useRef(null);
   const mapRef = useRef(null);
   const selectedMarkerRef = useRef(null);
-  const savedMarkersRef = useRef([]);
-  const placesServiceRef = useRef(null);
-  const geocoderRef = useRef(null);
-  const [status, setStatus] = useState(apiKey ? "loading" : "missing-key");
+  const savedLayerRef = useRef(null);
+  const [searchText, setSearchText] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [status, setStatus] = useState("ready");
 
   useEffect(() => {
-    if (!apiKey) {
-      setStatus("missing-key");
+    if (!mapNodeRef.current || mapRef.current) {
       return;
     }
 
-    let isMounted = true;
+    const map = L.map(mapNodeRef.current, {
+      center: taipeiCenter,
+      zoom: 12,
+      scrollWheelZoom: true
+    });
 
-    async function setupMap() {
-      try {
-        setStatus("loading");
-        const google = await loadGoogleMaps(apiKey, language === "zh" ? "zh-TW" : "en");
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19
+    }).addTo(map);
 
-        if (!isMounted || !mapNodeRef.current || !searchNodeRef.current) {
-          return;
-        }
+    savedLayerRef.current = L.layerGroup().addTo(map);
+    mapRef.current = map;
 
-        const map = new google.maps.Map(mapNodeRef.current, {
-          center: taipeiCenter,
-          zoom: 12,
-          mapTypeControl: false,
-          streetViewControl: false,
-          fullscreenControl: false
-        });
+    map.on("click", (event) => {
+      reverseSelectPlace(event.latlng);
+    });
 
-        mapRef.current = map;
-        placesServiceRef.current = new google.maps.places.PlacesService(map);
-        geocoderRef.current = new google.maps.Geocoder();
-
-        const autocomplete = new google.maps.places.Autocomplete(searchNodeRef.current, {
-          fields: [
-            "address_components",
-            "formatted_address",
-            "geometry",
-            "name",
-            "place_id",
-            "rating",
-            "types",
-            "url"
-          ]
-        });
-
-        autocomplete.bindTo("bounds", map);
-        autocomplete.addListener("place_changed", () => {
-          const place = autocomplete.getPlace();
-          selectPlace(place, google);
-        });
-
-        map.addListener("click", (event) => {
-          selectNearestPlace(event.latLng, google);
-        });
-
-        setStatus("ready");
-      } catch {
-        if (isMounted) {
-          setStatus("error");
-        }
-      }
-    }
-
-    setupMap();
+    setTimeout(() => map.invalidateSize(), 0);
 
     return () => {
-      isMounted = false;
+      map.remove();
+      mapRef.current = null;
     };
-  }, [apiKey, language]);
+  }, []);
 
   useEffect(() => {
-    if (!mapRef.current || !window.google?.maps) {
+    if (!savedLayerRef.current) {
       return;
     }
 
-    const google = window.google;
+    savedLayerRef.current.clearLayers();
 
-    savedMarkersRef.current.forEach((marker) => marker.setMap(null));
-    savedMarkersRef.current = spots
+    spots
       .filter((spot) => spot.lat && spot.lng)
-      .map((spot) => {
-        return new google.maps.Marker({
-          map: mapRef.current,
-          position: { lat: spot.lat, lng: spot.lng },
-          title: spot.name,
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 7,
-            fillColor: "#2f7d79",
-            fillOpacity: 1,
-            strokeColor: "#ffffff",
-            strokeWeight: 2
-          }
-        });
+      .forEach((spot) => {
+        L.circleMarker([spot.lat, spot.lng], {
+          radius: 7,
+          color: "#ffffff",
+          weight: 2,
+          fillColor: "#2f7d79",
+          fillOpacity: 1
+        })
+          .bindPopup(`<strong>${spot.name}</strong><br>${spot.area || ""}`)
+          .addTo(savedLayerRef.current);
       });
-  }, [spots, status]);
+  }, [spots]);
 
-  function selectPlace(place, google) {
-    if (!place?.geometry?.location || !mapRef.current) {
+  function showSelectedPlace(place) {
+    if (!mapRef.current || !place.lat || !place.lng) {
       return;
     }
 
-    const nextPlace = placeToSpotData(place, google);
-    mapRef.current.panTo(place.geometry.location);
-    mapRef.current.setZoom(15);
+    const latLng = [place.lat, place.lng];
+    mapRef.current.setView(latLng, 15);
 
     if (!selectedMarkerRef.current) {
-      selectedMarkerRef.current = new google.maps.Marker({
-        map: mapRef.current,
-        title: nextPlace.name
-      });
+      selectedMarkerRef.current = L.marker(latLng, { icon: selectedIcon() }).addTo(
+        mapRef.current
+      );
     }
 
-    selectedMarkerRef.current.setPosition(place.geometry.location);
-    selectedMarkerRef.current.setTitle(nextPlace.name);
-    onSelectPlace(nextPlace);
+    selectedMarkerRef.current.setLatLng(latLng).bindPopup(place.name).openPopup();
+    onSelectPlace(place);
   }
 
-  function selectNearestPlace(location, google) {
-    if (!placesServiceRef.current) {
+  async function searchPlaces(event) {
+    event.preventDefault();
+
+    if (!searchText.trim()) {
       return;
     }
 
-    placesServiceRef.current.nearbySearch(
-      {
-        location,
-        rankBy: google.maps.places.RankBy.DISTANCE
-      },
-      (results, serviceStatus) => {
-        if (serviceStatus === google.maps.places.PlacesServiceStatus.OK && results?.[0]) {
-          placesServiceRef.current.getDetails(
-            {
-              placeId: results[0].place_id,
-              fields: [
-                "address_components",
-                "formatted_address",
-                "geometry",
-                "name",
-                "place_id",
-                "rating",
-                "types",
-                "url"
-              ]
-            },
-            (place, detailsStatus) => {
-              if (detailsStatus === google.maps.places.PlacesServiceStatus.OK) {
-                selectPlace(place, google);
-              }
-            }
-          );
-          return;
-        }
+    setStatus("searching");
 
-        geocoderRef.current?.geocode({ location }, (geocodeResults, geocodeStatus) => {
-          if (geocodeStatus === "OK" && geocodeResults?.[0]) {
-            selectPlace(
-              {
-                ...geocodeResults[0],
-                name: geocodeResults[0].formatted_address,
-                geometry: { location }
-              },
-              google
-            );
-          }
-        });
-      }
-    );
+    try {
+      const params = new URLSearchParams({
+        q: searchText.trim(),
+        format: "jsonv2",
+        addressdetails: "1",
+        limit: "5",
+        "accept-language": language === "zh" ? "zh-TW" : "en"
+      });
+      const response = await fetch(`${nominatimBaseUrl}/search?${params.toString()}`);
+      const results = await response.json();
+
+      setSearchResults(results);
+      setStatus(results.length ? "ready" : "empty");
+    } catch {
+      setStatus("error");
+    }
+  }
+
+  async function reverseSelectPlace(latLng) {
+    setStatus("searching");
+
+    try {
+      const params = new URLSearchParams({
+        lat: String(latLng.lat),
+        lon: String(latLng.lng),
+        format: "jsonv2",
+        addressdetails: "1",
+        "accept-language": language === "zh" ? "zh-TW" : "en"
+      });
+      const response = await fetch(`${nominatimBaseUrl}/reverse?${params.toString()}`);
+      const result = await response.json();
+      const place = placeFromNominatim({
+        ...result,
+        lat: latLng.lat,
+        lon: latLng.lng
+      });
+
+      setSearchResults([]);
+      setStatus("ready");
+      showSelectedPlace(place);
+    } catch {
+      setStatus("error");
+    }
   }
 
   return (
@@ -218,40 +181,58 @@ export default function MapPicker({ apiKey, spots, selectedPlace, onSelectPlace,
         </div>
       </div>
 
-      <label>
-        {t.mapSearch}
-        <input
-          disabled={!apiKey || status !== "ready"}
-          placeholder={t.mapSearchPlaceholder}
-          ref={searchNodeRef}
-        />
-      </label>
+      <form className="map-search" onSubmit={searchPlaces}>
+        <label>
+          {t.mapSearch}
+          <input
+            placeholder={t.mapSearchPlaceholder}
+            value={searchText}
+            onChange={(event) => setSearchText(event.target.value)}
+          />
+        </label>
+        <button className="secondary-button" type="submit">
+          {t.mapSearchButton}
+        </button>
+      </form>
+
+      {searchResults.length > 0 && (
+        <div className="search-results">
+          {searchResults.map((result) => {
+            const place = placeFromNominatim(result);
+
+            return (
+              <button
+                key={`${result.osm_type}-${result.osm_id}`}
+                type="button"
+                onClick={() => {
+                  setSearchResults([]);
+                  setSearchText(place.name);
+                  showSelectedPlace(place);
+                }}
+              >
+                <span>{place.name}</span>
+                <small>{place.address}</small>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <div className="map-frame">
         <div className="map-canvas" ref={mapNodeRef} />
-        {status !== "ready" && (
-          <div className="map-overlay">
-            <h3>
-              {status === "missing-key" && t.mapMissingKey}
-              {status === "loading" && t.mapLoading}
-              {status === "error" && t.mapError}
-            </h3>
-            {status === "missing-key" && <p>{t.mapMissingKeyDetail}</p>}
-          </div>
-        )}
       </div>
 
-      <p className="map-help">{t.mapHelp}</p>
+      <p className="map-help">
+        {status === "searching" ? t.mapSearching : t.mapHelp}
+        {status === "empty" && ` ${t.mapNoResults}`}
+        {status === "error" && ` ${t.mapError}`}
+      </p>
 
       {selectedPlace && (
         <div className="selected-place">
           <p className="eyebrow">{t.selectedPlace}</p>
           <h3>{selectedPlace.name}</h3>
           <dl>
-            <div>
-              <dt>{t.rating}</dt>
-              <dd>{selectedPlace.rating ? `${selectedPlace.rating} / 5` : t.noRating}</dd>
-            </div>
             <div>
               <dt>{t.address}</dt>
               <dd>{selectedPlace.address || selectedPlace.area || "-"}</dd>
